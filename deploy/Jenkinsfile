@@ -1,0 +1,48 @@
+podTemplate(label: 'jnlp-slave', cloud: 'kubernetes', containers: [
+    containerTemplate(
+        name: 'jnlp', 
+        image: '192.168.126.130/ops/jenkins-slave', 
+        alwaysPullImage: true 
+    ),
+  ],
+  volumes: [
+    hostPathVolume(mountPath: '/var/run/docker.sock', hostPath: '/var/run/docker.sock'),
+    hostPathVolume(mountPath: '/usr/bin/docker', hostPath: '/usr/bin/docker'),
+    hostPathVolume(mountPath: '/usr/local/jdk', hostPath: '/usr/local/jdk'),
+    hostPathVolume(mountPath: '/usr/local/maven', hostPath: '/usr/local/maven'),
+  ],
+  imagePullSecrets: ['registry-pull-secret'],
+) 
+{
+  node("jnlp-slave"){
+      stage('Git Checkout'){
+         checkout([$class: 'GitSCM', branches: [[name: '${Tag}']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '4f6bd4be-10c1-4d8b-b852-04e39e11a5db', url: 'https://github.com/wuweidu/solo.git']]])
+      }
+      stage('Unit Testing'){
+      	echo "Unit Testing..."
+      }
+      stage('Maven Build'){
+          sh "mvn clean package -Dmaven.test.skip=true"
+      }
+      stage('Build and Push Image'){
+          sh '''
+          #echo "192.168.0.211 reg.aliangedu.com" >> /etc/hosts
+          docker login -u wwd -p Wwd2512885541 192.168.126.130
+          docker build -t 192.168.126.130/project/solo:${Tag} -f deploy/Dockerfile .
+          docker push 192.168.126.130/project/solo:${Tag}
+          '''
+      }
+      stage('Deploy to K8S'){
+          sh '''
+          cd deploy 
+          sed -i "/92.168.126.130/{s/latest/${Tag}/}" deploy.yaml
+          sed -i "s/environment/${Env}/" deploy.yaml
+          ''' 
+          kubernetesDeploy configs: 'deploy/deploy.yaml', kubeConfig: [path: ''], kubeconfigId: '476d1d99-0aaf-4989-9fba-b3176fb52b60', secretName: '', ssh: [sshCredentialsId: '*', sshServer: ''], textCredentials: [certificateAuthorityData: '', clientCertificateData: '', clientKeyData: '', serverUrl: 'https://']
+      }
+      stage('Testing'){
+          echo "Testing..."
+      }
+  }
+}
+
