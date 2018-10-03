@@ -35,7 +35,7 @@ podTemplate(label: 'jnlp-slave', cloud: 'kubernetes', containers: [
       stage('Deploy to K8S'){
           sh '''
           cd deploy 
-          sed -i "/92.168.126.130/{s/latest/${Tag}/}" deploy.yaml
+          sed -i "/192.168.126.130/{s/latest/${Tag}/}" deploy.yaml
           sed -i "s/environment/${Env}/" deploy.yaml
           ''' 
           kubernetesDeploy configs: 'deploy/deploy.yaml', kubeConfig: [path: ''], kubeconfigId: '476d1d99-0aaf-4989-9fba-b3176fb52b60', secretName: '', ssh: [sshCredentialsId: '*', sshServer: ''], textCredentials: [certificateAuthorityData: '', clientCertificateData: '', clientKeyData: '', serverUrl: 'https://']
